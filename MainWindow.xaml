@@ -1,0 +1,616 @@
+<Window x:Class="RabbitMqMonitor.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="RabbitMQ Unified Multi-Server Monitor"
+        Icon="pack://application:,,,/Assets/rabbitmq.ico"
+        Width="1440"
+        Height="860"
+        MinWidth="1080"
+        MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        Background="#0B0F17"
+        Foreground="#F8FAFC">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- Top App Bar & Live Polling Controls -->
+            <RowDefinition Height="Auto"/>
+            <!-- Main Split Workspace: Left Server Health Cards + Right Queue DataGrid -->
+            <RowDefinition Height="*"/>
+            <!-- Bottom Status Bar -->
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ==================== TOP COMMAND & KPI BAR ==================== -->
+        <Border Grid.Row="0"
+                Background="#111827"
+                BorderBrush="#1E293B"
+                BorderThickness="0,0,0,1"
+                Padding="20,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Brand Title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="34" Height="34" CornerRadius="8" Background="#FF6600" Margin="0,0,12,0">
+                        <Canvas Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Rectangle Canvas.Left="2" Canvas.Top="1" Width="4.5" Height="17" Fill="White" RadiusX="1" RadiusY="1"/>
+                            <Rectangle Canvas.Left="8.5" Canvas.Top="1" Width="4.5" Height="17" Fill="White" RadiusX="1" RadiusY="1"/>
+                            <Rectangle Canvas.Left="2" Canvas.Top="8.5" Width="16" Height="9.5" Fill="White" RadiusX="1.5" RadiusY="1.5"/>
+                            <Ellipse Canvas.Left="12.5" Canvas.Top="11.5" Width="3.5" Height="3.5" Fill="#FF6600"/>
+                        </Canvas>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="RabbitMQ Multi-Server Monitor"
+                                   FontSize="17"
+                                   FontWeight="Bold"
+                                   Foreground="#F8FAFC"/>
+                        <TextBlock Text="Real-Time Cluster &amp; Queue Telemetry Dashboard"
+                                   FontSize="11"
+                                   Foreground="#94A3B8"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Center KPI Summary Pills -->
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                    <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Padding="14,6" Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="SERVERS ONLINE: " Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding OnlineServersCount}" Foreground="#22C55E" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Text="/" Foreground="#64748B" FontSize="13" Margin="2,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding EnabledServersCount}" Foreground="#CBD5E1" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Padding="14,6" Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="TOTAL QUEUES: " Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding TotalQueuesCount, StringFormat={}{0:N0}}" Foreground="#38BDF8" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Padding="14,6" Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="BUFFERED MESSAGES: " Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding TotalMessagesCount, StringFormat={}{0:N0}}" Foreground="#F8FAFC" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Padding="14,6">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="ALERT QUEUES: " Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding AlertQueuesCount}" Foreground="#F59E0B" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Right Live Polling Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Interval:"
+                               Foreground="#94A3B8"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0"/>
+                    <ComboBox ItemsSource="{Binding AvailableRefreshIntervals}"
+                              SelectedItem="{Binding SelectedGlobalIntervalSeconds}"
+                              Width="72"
+                              Height="32"
+                              VerticalContentAlignment="Center"
+                              Margin="0,0,10,0">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding StringFormat='{}{0}s'}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <Button Content="{Binding AutoRefreshButtonText}"
+                            Command="{Binding ToggleAutoRefreshCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Margin="0,0,8,0"/>
+
+                    <Button Content="⟳ Refresh Now"
+                            Command="{Binding RefreshNowCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Margin="0,0,12,0"/>
+
+                    <CheckBox Content="Minimize to Tray"
+                              IsChecked="{Binding MinimizeToTray}"
+                              Foreground="#CBD5E1"
+                              VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ==================== MAIN WORKSPACE ==================== -->
+        <Grid Grid.Row="1" Margin="16">
+            <Grid.ColumnDefinitions>
+                <!-- Left Column: Server Health Cards -->
+                <ColumnDefinition Width="360" MinWidth="300" MaxWidth="460"/>
+                <ColumnDefinition Width="16"/>
+                <!-- Right Column: Unified Queue DataGrid -->
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- LEFT PANEL: SERVER HEALTH CARDS -->
+            <Border Grid.Column="0"
+                    Background="#111827"
+                    BorderBrush="#1E293B"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="14">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header + Add Server Button -->
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="SERVER FLEET"
+                                       FontSize="13"
+                                       FontWeight="Bold"
+                                       Foreground="#F8FAFC"/>
+                            <TextBlock Text="Click a server card to filter queues"
+                                       FontSize="11"
+                                       Foreground="#64748B"/>
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Content="+ Add Server"
+                                Command="{Binding AddServerCommand}"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Padding="12,5"/>
+                    </Grid>
+
+                    <!-- "All Servers" Unified Filter Card -->
+                    <Button Grid.Row="1"
+                            Command="{Binding SelectAllServersCommand}"
+                            Margin="0,0,0,10"
+                            Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="AllServersBorder"
+                                        Background="#1E293B"
+                                        BorderBrush="#334155"
+                                        BorderThickness="1.5"
+                                        CornerRadius="6"
+                                        Padding="12,9">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Ellipse Width="9" Height="9" Fill="#38BDF8" Margin="0,0,8,0"/>
+                                            <TextBlock Text="All Servers (Combined View)"
+                                                       Foreground="#F8FAFC"
+                                                       FontWeight="SemiBold"
+                                                       FontSize="12.5"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding TotalQueuesCount, StringFormat='{}{0} queues'}"
+                                                   Foreground="#94A3B8"
+                                                   FontSize="11.5"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsAllServersSelected}" Value="True">
+                                        <Setter TargetName="AllServersBorder" Property="BorderBrush" Value="#38BDF8"/>
+                                        <Setter TargetName="AllServersBorder" Property="Background" Value="#172554"/>
+                                    </DataTrigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <!-- Scrollable Server Health Cards -->
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Servers}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border x:Name="CardBorder"
+                                            Background="#182234"
+                                            BorderBrush="#293548"
+                                            BorderThickness="1.5"
+                                            CornerRadius="8"
+                                            Padding="12"
+                                            Margin="0,0,0,10"
+                                            Cursor="Hand">
+                                        <Border.InputBindings>
+                                            <MouseBinding MouseAction="LeftClick"
+                                                          Command="{Binding DataContext.SelectServerFilterCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          CommandParameter="{Binding}"/>
+                                        </Border.InputBindings>
+
+                                        <StackPanel>
+                                            <!-- Row 1: Status Dot, Server Name, Enable Checkbox & Edit/Delete -->
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <Ellipse x:Name="StatusDot"
+                                                         Width="11"
+                                                         Height="11"
+                                                         Fill="#22C55E"
+                                                         VerticalAlignment="Center"
+                                                         Margin="0,0,8,0"/>
+
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}"
+                                                               FontSize="14"
+                                                               FontWeight="Bold"
+                                                               Foreground="#F8FAFC"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding HostUrl}"
+                                                               FontSize="11"
+                                                               Foreground="#94A3B8"
+                                                               FontFamily="Consolas"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+                                                    <CheckBox IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                                              ToolTip="Enable or disable polling for this server"
+                                                              Command="{Binding DataContext.ToggleServerEnabledCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              CommandParameter="{Binding}"
+                                                              VerticalAlignment="Center"
+                                                              Margin="0,0,6,0"/>
+                                                    <Button Content="✎"
+                                                            ToolTip="Edit Server Profile"
+                                                            Command="{Binding DataContext.EditServerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource IconActionButtonStyle}"
+                                                            Margin="0,0,4,0"/>
+                                                    <Button Content="✕"
+                                                            ToolTip="Delete Server Profile"
+                                                            Command="{Binding DataContext.DeleteServerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource IconActionButtonStyle}"/>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <!-- Row 2: Live Status Badge & Version -->
+                                            <Grid Margin="0,8,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border x:Name="StatusBadge"
+                                                        Background="#052E16"
+                                                        BorderBrush="#16A34A"
+                                                        BorderThickness="1"
+                                                        CornerRadius="4"
+                                                        Padding="7,2">
+                                                    <TextBlock x:Name="StatusBadgeText"
+                                                               Text="{Binding StatusText}"
+                                                               Foreground="#4ADE80"
+                                                               FontSize="10.5"
+                                                               FontWeight="Bold"/>
+                                                </Border>
+
+                                                <TextBlock Grid.Column="1"
+                                                           HorizontalAlignment="Right"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#64748B"
+                                                           FontSize="11">
+                                                    <Run Text="RMQ "/>
+                                                    <Run Text="{Binding RabbitMqVersion}" Foreground="#94A3B8"/>
+                                                    <Run Text=" • VHost "/>
+                                                    <Run Text="{Binding VirtualHost}" Foreground="#94A3B8" FontFamily="Consolas"/>
+                                                </TextBlock>
+                                            </Grid>
+
+                                            <!-- Error Detail Banner when Offline -->
+                                            <TextBlock x:Name="ErrorBanner"
+                                                       Text="{Binding ErrorMessage}"
+                                                       Foreground="#FCA5A5"
+                                                       FontSize="11"
+                                                       TextWrapping="Wrap"
+                                                       Margin="0,0,0,6"
+                                                       Visibility="Collapsed"/>
+
+                                            <!-- Row 3: Telemetry Metrics Grid -->
+                                            <UniformGrid Columns="3" Margin="0,4,0,6">
+                                                <Border Background="#0F172A" CornerRadius="4" Padding="8,5" Margin="0,0,4,0">
+                                                    <StackPanel>
+                                                        <TextBlock Text="QUEUES" FontSize="9.5" Foreground="#64748B" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="{Binding TotalQueues, StringFormat={}{0:N0}}"
+                                                                   FontSize="13"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="#38BDF8"
+                                                                   FontFamily="Consolas"/>
+                                                    </StackPanel>
+                                                </Border>
+                                                <Border Background="#0F172A" CornerRadius="4" Padding="8,5" Margin="2,0">
+                                                    <StackPanel>
+                                                        <TextBlock Text="MESSAGES" FontSize="9.5" Foreground="#64748B" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="{Binding TotalMessages, StringFormat={}{0:N0}}"
+                                                                   FontSize="13"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="#F8FAFC"
+                                                                   FontFamily="Consolas"/>
+                                                    </StackPanel>
+                                                </Border>
+                                                <Border Background="#0F172A" CornerRadius="4" Padding="8,5" Margin="4,0,0,0">
+                                                    <StackPanel>
+                                                        <TextBlock Text="CONSUMERS" FontSize="9.5" Foreground="#64748B" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="{Binding ActiveConsumers, StringFormat={}{0:N0}}"
+                                                                   FontSize="13"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="#A7F3D0"
+                                                                   FontFamily="Consolas"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </UniformGrid>
+
+                                            <!-- Row 4: Footer Timestamp & Rates -->
+                                            <Grid>
+                                                <TextBlock Foreground="#64748B" FontSize="10.5">
+                                                    <Run Text="Pub:"/>
+                                                    <Run Text="{Binding GlobalPublishRate, StringFormat={}{0:0.0}/s}" Foreground="#94A3B8" FontFamily="Consolas"/>
+                                                    <Run Text="  Del:"/>
+                                                    <Run Text="{Binding GlobalDeliverRate, StringFormat={}{0:0.0}/s}" Foreground="#94A3B8" FontFamily="Consolas"/>
+                                                </TextBlock>
+                                                <TextBlock HorizontalAlignment="Right"
+                                                           Foreground="#64748B"
+                                                           FontSize="10.5">
+                                                    <Run Text="Checked: "/>
+                                                    <Run Text="{Binding LastCheckedDisplay, Mode=OneWay}" Foreground="#94A3B8" FontFamily="Consolas"/>
+                                                </TextBlock>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <DataTemplate.Triggers>
+                                        <!-- Offline State -->
+                                        <DataTrigger Binding="{Binding IsOnline}" Value="False">
+                                            <Setter TargetName="StatusDot" Property="Fill" Value="#EF4444"/>
+                                            <Setter TargetName="StatusBadge" Property="Background" Value="#450A0A"/>
+                                            <Setter TargetName="StatusBadge" Property="BorderBrush" Value="#DC2626"/>
+                                            <Setter TargetName="StatusBadgeText" Property="Foreground" Value="#F87171"/>
+                                            <Setter TargetName="CardBorder" Property="BorderBrush" Value="#7F1D1D"/>
+                                            <Setter TargetName="ErrorBanner" Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                        <!-- Disabled State -->
+                                        <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                            <Setter TargetName="StatusDot" Property="Fill" Value="#64748B"/>
+                                            <Setter TargetName="StatusBadge" Property="Background" Value="#1E293B"/>
+                                            <Setter TargetName="StatusBadge" Property="BorderBrush" Value="#475569"/>
+                                            <Setter TargetName="StatusBadgeText" Property="Foreground" Value="#94A3B8"/>
+                                            <Setter TargetName="CardBorder" Property="BorderBrush" Value="#1E293B"/>
+                                            <Setter TargetName="CardBorder" Property="Opacity" Value="0.65"/>
+                                            <Setter TargetName="ErrorBanner" Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- RIGHT PANEL: UNIFIED QUEUE DATAGRID & FILTERS -->
+            <Border Grid.Column="2"
+                    Background="#111827"
+                    BorderBrush="#1E293B"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Queue Section Header & Legend -->
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Text="{Binding ActiveFilterTitle}"
+                                       FontSize="15"
+                                       FontWeight="Bold"
+                                       Foreground="#F8FAFC"/>
+                            <TextBlock Text="Right-click any queue row to safely peek the top 5 messages (ack_requeue_true)"
+                                       FontSize="11.5"
+                                       Foreground="#64748B"
+                                       Margin="0,2,0,0"/>
+                        </StackPanel>
+
+                        <!-- Visual Alert Legend -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border Background="#451A1C" BorderBrush="#DC2626" BorderThickness="1" CornerRadius="4" Padding="8,3" Margin="0,0,8,0">
+                                <TextBlock Text="● Exceeds Alert Threshold" Foreground="#FCA5A5" FontSize="11"/>
+                            </Border>
+                            <Border Background="#422B13" BorderBrush="#D97706" BorderThickness="1" CornerRadius="4" Padding="8,3">
+                                <TextBlock Text="● Messages &gt; 0 &amp; No Consumers" Foreground="#FCD34D" FontSize="11"/>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Search Box & Quick Filter Checkboxes -->
+                    <Grid Grid.Row="1" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="320"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBoxStyle}"
+                                 Tag="Search by queue name, server name, or vhost..."/>
+
+                        <CheckBox Grid.Column="2"
+                                  Content="Show Only Non-Empty Queues"
+                                  IsChecked="{Binding ShowOnlyNonEmptyQueues}"
+                                  Foreground="#E2E8F0"
+                                  VerticalAlignment="Center"/>
+
+                        <CheckBox Grid.Column="4"
+                                  Content="Show Only Queues Without Consumers"
+                                  IsChecked="{Binding ShowOnlyQueuesWithoutConsumers}"
+                                  Foreground="#E2E8F0"
+                                  VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Main Queue DataGrid -->
+                    <DataGrid Grid.Row="2"
+                              ItemsSource="{Binding FilteredQueuesView}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              SelectionMode="Single"
+                              SelectionUnit="FullRow"
+                              GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="#1E293B"
+                              VerticalGridLinesBrush="Transparent"
+                              Background="#0B0F17"
+                              RowBackground="#111827"
+                              AlternatingRowBackground="#151E2E"
+                              BorderBrush="#1E293B"
+                              BorderThickness="1"
+                              HeadersVisibility="Column"
+                              RowHeaderWidth="0"
+                              FontSize="12.5">
+
+                        <DataGrid.ContextMenu>
+                            <ContextMenu Background="#1E293B" Foreground="#F8FAFC" BorderBrush="#334155">
+                                <MenuItem Header="🔍 Peek Top 5 Messages (Safe Requeue)"
+                                          Command="{Binding PeekQueueMessagesCommand}"
+                                          CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                            </ContextMenu>
+                        </DataGrid.ContextMenu>
+
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Setter Property="Foreground" Value="#E2E8F0"/>
+                                <Setter Property="Padding" Value="0,4"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding AlertLevel}" Value="Warning">
+                                        <Setter Property="Background" Value="#3B2712"/>
+                                        <Setter Property="Foreground" Value="#FDE68A"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding AlertLevel}" Value="Critical">
+                                        <Setter Property="Background" Value="#45171B"/>
+                                        <Setter Property="Foreground" Value="#FECACA"/>
+                                    </DataTrigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#1D4ED8"/>
+                                        <Setter Property="Foreground" Value="White"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Server Name"
+                                                Binding="{Binding ServerName}"
+                                                Width="140"
+                                                FontWeight="SemiBold"/>
+
+                            <DataGridTextColumn Header="Queue Name"
+                                                Binding="{Binding Name}"
+                                                Width="2*"
+                                                FontFamily="Consolas"
+                                                FontWeight="SemiBold"/>
+
+                            <DataGridTextColumn Header="Virtual Host"
+                                                Binding="{Binding VirtualHost}"
+                                                Width="105"
+                                                FontFamily="Consolas"/>
+
+                            <DataGridTextColumn Header="State"
+                                                Binding="{Binding State}"
+                                                Width="90"/>
+
+                            <DataGridTextColumn Header="Total Messages"
+                                                Binding="{Binding TotalMessages, StringFormat={}{0:N0}}"
+                                                Width="125"
+                                                FontFamily="Consolas"
+                                                FontWeight="Bold"/>
+
+                            <DataGridTextColumn Header="Ready"
+                                                Binding="{Binding ReadyMessages, StringFormat={}{0:N0}}"
+                                                Width="100"
+                                                FontFamily="Consolas"/>
+
+                            <DataGridTextColumn Header="Unacked"
+                                                Binding="{Binding UnackedMessages, StringFormat={}{0:N0}}"
+                                                Width="100"
+                                                FontFamily="Consolas"/>
+
+                            <DataGridTextColumn Header="Consumers"
+                                                Binding="{Binding Consumers, StringFormat={}{0:N0}}"
+                                                Width="95"
+                                                FontFamily="Consolas"/>
+
+                            <DataGridTextColumn Header="Publish Rate (/s)"
+                                                Binding="{Binding PublishRate, StringFormat={}{0:0.00}}"
+                                                Width="125"
+                                                FontFamily="Consolas"/>
+
+                            <DataGridTextColumn Header="Deliver Rate (/s)"
+                                                Binding="{Binding DeliverRate, StringFormat={}{0:0.00}}"
+                                                Width="125"
+                                                FontFamily="Consolas"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ==================== BOTTOM STATUS BAR ==================== -->
+        <Border Grid.Row="2"
+                Background="#111827"
+                BorderBrush="#1E293B"
+                BorderThickness="0,1,0,0"
+                Padding="20,7">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding GlobalStatusBanner}"
+                           Foreground="#94A3B8"
+                           FontSize="11.5"
+                           VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1"
+                           Text="Storage: servers.json (DPAPI CurrentUser Encrypted)  •  HTTP Timeout: 3.5s"
+                           Foreground="#64748B"
+                           FontSize="11"
+                           FontFamily="Consolas"
+                           VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
+

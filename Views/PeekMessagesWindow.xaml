@@ -1,0 +1,155 @@
+<Window x:Class="RabbitMqMonitor.Views.PeekMessagesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Peek Top Queue Messages (Non-Destructive Requeue)"
+        Icon="pack://application:,,,/Assets/rabbitmq.ico"
+        Width="860"
+        Height="620"
+        WindowStartupLocation="CenterOwner"
+        Background="#0F172A"
+        Foreground="#F8FAFC">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Background="#1E293B"
+                CornerRadius="6"
+                Padding="14,10"
+                BorderBrush="#334155"
+                BorderThickness="1"
+                Margin="0,0,0,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock x:Name="HeaderTitleText"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="#F8FAFC"/>
+                    <TextBlock x:Name="SubHeaderText"
+                               FontSize="12"
+                               Foreground="#94A3B8"
+                               Margin="0,2,0,0"/>
+                </StackPanel>
+                <Border Grid.Column="1"
+                        Background="#064E3B"
+                        BorderBrush="#10B981"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="10,4"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="SAFE PEEK: ack_requeue_true"
+                               Foreground="#34D399"
+                               FontSize="11"
+                               FontWeight="SemiBold"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <ListBox x:Name="MessagesListBox"
+                 Grid.Row="1"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Margin" Value="0,0,0,12"/>
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <ContentPresenter/>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Border Background="#1E293B"
+                            BorderBrush="#334155"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="14">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Background="#0284C7"
+                                        CornerRadius="4"
+                                        Padding="8,2"
+                                        Margin="0,0,10,0">
+                                    <TextBlock Text="{Binding Index, StringFormat='Message #{0}'}"
+                                               Foreground="White"
+                                               FontWeight="Bold"
+                                               FontSize="11"/>
+                                </Border>
+                                <TextBlock Grid.Column="1"
+                                           VerticalAlignment="Center"
+                                           Foreground="#CBD5E1"
+                                           FontSize="12">
+                                    <Run Text="Exchange:" Foreground="#64748B"/>
+                                    <Run Text="{Binding Exchange}" FontWeight="SemiBold"/>
+                                    <Run Text="  |  Routing Key:" Foreground="#64748B"/>
+                                    <Run Text="{Binding RoutingKey}" FontWeight="SemiBold"/>
+                                    <Run Text="  |  Bytes:" Foreground="#64748B"/>
+                                    <Run Text="{Binding PayloadBytes}"/>
+                                </TextBlock>
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding Timestamp}"
+                                           Foreground="#94A3B8"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <TextBox Text="{Binding FormattedPayload, Mode=OneWay}"
+                                     IsReadOnly="True"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     MaxHeight="220"
+                                     VerticalScrollBarVisibility="Auto"
+                                     FontFamily="Consolas"
+                                     FontSize="12"
+                                     Background="#0B1120"
+                                     Foreground="#38BDF8"
+                                     BorderBrush="#1E293B"
+                                     Padding="10"/>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Grid Grid.Row="2" Margin="0,14,0,0">
+            <TextBlock x:Name="EmptyStateText"
+                       Text="Queue is currently empty or all messages are unacknowledged."
+                       Foreground="#94A3B8"
+                       VerticalAlignment="Center"
+                       Visibility="Collapsed"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Copy All Payloads"
+                        Width="140"
+                        Margin="0,0,10,0"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Click="CopyAllButton_Click"/>
+                <Button Content="Close"
+                        Width="100"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        IsCancel="True"
+                        Click="CloseButton_Click"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
+
