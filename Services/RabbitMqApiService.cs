@@ -148,6 +148,59 @@ public sealed class RabbitMqApiService : IDisposable
             result.StatusText = "ONLINE";
             result.ErrorMessage = string.Empty;
             result.Queues = mappedQueues;
+
+            // 3. Poll /api/nodes (Read-only node health & hardware telemetry)
+            try
+            {
+                string nodesUrl = $"{baseUrl}/api/nodes";
+                using var nodesReq = new HttpRequestMessage(HttpMethod.Get, nodesUrl);
+                nodesReq.Headers.Authorization = new AuthenticationHeaderValue("Basic", authHeader);
+
+                using var nodesResp = await _httpClient.SendAsync(
+                    nodesReq,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    cancellationToken).ConfigureAwait(false);
+
+                if (nodesResp.IsSuccessStatusCode)
+                {
+                    await using var nodesStream = await nodesResp.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+                    var nodeDtos = await JsonSerializer.DeserializeAsync<List<RabbitNodeDto>>(nodesStream, JsonOptions, cancellationToken).ConfigureAwait(false)
+                                   ?? [];
+
+                    var mappedNodes = new List<NodeItem>(nodeDtos.Count);
+                    foreach (var n in nodeDtos)
+                    {
+                        mappedNodes.Add(new NodeItem
+                        {
+                            ServerId = server.Id,
+                            ServerName = server.Name,
+                            Name = string.IsNullOrWhiteSpace(n.Name) ? "(node)" : n.Name,
+                            IsRunning = n.Running ?? true,
+                            FdUsed = GetSafeLong(n.FdUsed),
+                            FdTotal = GetSafeLong(n.FdTotal),
+                            ProcUsed = GetSafeLong(n.ProcUsed),
+                            ProcTotal = GetSafeLong(n.ProcTotal),
+                            MemUsedBytes = GetSafeLong(n.MemUsed),
+                            MemLimitBytes = GetSafeLong(n.MemLimit),
+                            MemAlarm = n.MemAlarm ?? false,
+                            DiskFreeBytes = GetSafeLong(n.DiskFree),
+                            DiskFreeLimitBytes = GetSafeLong(n.DiskFreeLimit),
+                            DiskFreeAlarm = n.DiskFreeAlarm ?? false,
+                            UptimeMilliseconds = GetSafeLong(n.Uptime),
+                            Cores = (int)GetSafeLong(n.Processors),
+                            RatesMode = string.IsNullOrWhiteSpace(n.RatesMode) ? "basic" : n.RatesMode,
+                            MemStrategy = string.IsNullOrWhiteSpace(n.MemCalculationStrategy) ? "rss" : n.MemCalculationStrategy
+                        });
+                    }
+
+                    result.Nodes = mappedNodes;
+                }
+            }
+            catch
+            {
+                // Non-fatal: if /api/nodes is restricted for a user role, still keep queue monitoring online
+            }
+
             return result;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -265,6 +318,22 @@ public sealed class RabbitMqApiService : IDisposable
         {
             return (false, ex.Message, []);
         }
+    }
+
+    private static long GetSafeLong(JsonElement? element)
+    {
+        if (element is null)
+            return 0L;
+
+        var el = element.Value;
+        if (el.ValueKind == JsonValueKind.Number)
+        {
+            if (el.TryGetInt64(out long val))
+                return val;
+            if (el.TryGetDouble(out double dval))
+                return (long)dval;
+        }
+        return 0L;
     }
 
     private static string FormatHttpErrorStatus(HttpStatusCode code)

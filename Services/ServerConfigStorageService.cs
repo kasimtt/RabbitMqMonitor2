@@ -12,6 +12,7 @@ public sealed class ServerConfigStorageService
 {
     private readonly CredentialEncryptionService _encryptionService;
     private readonly string _configFilePath;
+    private readonly string _settingsFilePath;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -24,9 +25,45 @@ public sealed class ServerConfigStorageService
         _encryptionService = encryptionService;
         string baseDir = AppContext.BaseDirectory;
         _configFilePath = Path.Combine(baseDir, "servers.json");
+        _settingsFilePath = Path.Combine(baseDir, "settings.json");
     }
 
     public string ConfigFilePath => _configFilePath;
+
+    public bool LoadRunInBackgroundSetting()
+    {
+        try
+        {
+            if (File.Exists(_settingsFilePath))
+            {
+                string json = File.ReadAllText(_settingsFilePath);
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("runInBackground", out var prop) &&
+                    (prop.ValueKind == JsonValueKind.True || prop.ValueKind == JsonValueKind.False))
+                {
+                    return prop.GetBoolean();
+                }
+            }
+        }
+        catch
+        {
+            // Ignore and use default
+        }
+        return true;
+    }
+
+    public void SaveRunInBackgroundSetting(bool runInBackground)
+    {
+        try
+        {
+            string json = JsonSerializer.Serialize(new { runInBackground }, JsonOptions);
+            File.WriteAllText(_settingsFilePath, json);
+        }
+        catch
+        {
+            // Ignore write errors
+        }
+    }
 
     public List<ServerProfile> LoadServers()
     {

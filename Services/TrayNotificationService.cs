@@ -19,6 +19,11 @@ public sealed class TrayNotificationService : IDisposable
 
     public bool NotificationsEnabled { get; set; } = true;
 
+    public void SetTrayIconVisible(bool visible)
+    {
+        _notifyIcon.Visible = visible;
+    }
+
     public TrayNotificationService(Action restoreWindowAction, Action exitApplicationAction)
     {
         _restoreWindowAction = restoreWindowAction;

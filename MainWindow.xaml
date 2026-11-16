@@ -124,7 +124,8 @@
                             Style="{StaticResource PrimaryButtonStyle}"
                             Margin="0,0,12,0"/>
 
-                    <CheckBox Content="Minimize to Tray"
+                    <CheckBox Content="Run in Background (Tray)"
+                              ToolTip="Checked: Closing or minimizing keeps the app running in the System Tray. Unchecked: Closing the window exits the app completely."
                               IsChecked="{Binding MinimizeToTray}"
                               Foreground="#CBD5E1"
                               VerticalAlignment="Center"/>
@@ -420,11 +421,12 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
                     <!-- Queue Section Header & Legend -->
-                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                    <Grid Grid.Row="0" Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
@@ -452,8 +454,218 @@
                         </StackPanel>
                     </Grid>
 
+                    <!-- NODES TELEMETRY SECTION (Read-only /api/nodes) -->
+                    <Expander Grid.Row="1"
+                              IsExpanded="True"
+                              Foreground="#F8FAFC"
+                              Margin="0,0,0,12">
+                        <Expander.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Nodes"
+                                           FontSize="13.5"
+                                           FontWeight="Bold"
+                                           Foreground="#F8FAFC"/>
+                                <TextBlock Text=" (File descriptors, Erlang processes, Memory, Disk space, Uptime, Cores)"
+                                           FontSize="11.5"
+                                           Foreground="#64748B"
+                                           VerticalAlignment="Center"
+                                           Margin="6,0,0,0"/>
+                            </StackPanel>
+                        </Expander.Header>
+
+                        <DataGrid ItemsSource="{Binding FilteredNodesView}"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  SelectionMode="Single"
+                                  SelectionUnit="FullRow"
+                                  GridLinesVisibility="All"
+                                  HorizontalGridLinesBrush="#1E293B"
+                                  VerticalGridLinesBrush="#1E293B"
+                                  Background="#0B0F17"
+                                  RowBackground="#111827"
+                                  AlternatingRowBackground="#151E2E"
+                                  BorderBrush="#1E293B"
+                                  BorderThickness="1"
+                                  HeadersVisibility="Column"
+                                  RowHeaderWidth="0"
+                                  MaxHeight="170"
+                                  Margin="0,6,0,0"
+                                  FontSize="12">
+                            <DataGrid.Columns>
+                                <!-- Server Name -->
+                                <DataGridTextColumn Header="Server"
+                                                    Binding="{Binding ServerName}"
+                                                    Width="120"
+                                                    FontWeight="SemiBold"/>
+
+                                <!-- Node Name Badge -->
+                                <DataGridTemplateColumn Header="Name" Width="175">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border Background="#CBD5E1"
+                                                    CornerRadius="4"
+                                                    Padding="8,3"
+                                                    Margin="6,4"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}"
+                                                           Foreground="#0F172A"
+                                                           FontFamily="Consolas"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="11.5"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- File Descriptors -->
+                                <DataGridTemplateColumn Header="File descriptors" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="6,3" HorizontalAlignment="Stretch">
+                                                <Border Background="#2E7D32" CornerRadius="3" Padding="6,2">
+                                                    <TextBlock Text="{Binding FdUsed, StringFormat={}{0:N0}}"
+                                                               Foreground="White"
+                                                               FontWeight="Bold"
+                                                               FontSize="11.5"
+                                                               HorizontalAlignment="Center"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding FdAvailableText}"
+                                                           Foreground="#94A3B8"
+                                                           FontSize="10"
+                                                           HorizontalAlignment="Center"
+                                                           Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- Erlang Processes -->
+                                <DataGridTemplateColumn Header="Erlang processes" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="6,3" HorizontalAlignment="Stretch">
+                                                <Border Background="#2E7D32" CornerRadius="3" Padding="6,2">
+                                                    <TextBlock Text="{Binding ProcUsed, StringFormat={}{0:N0}}"
+                                                               Foreground="White"
+                                                               FontWeight="Bold"
+                                                               FontSize="11.5"
+                                                               HorizontalAlignment="Center"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding ProcAvailableText}"
+                                                           Foreground="#94A3B8"
+                                                           FontSize="10"
+                                                           HorizontalAlignment="Center"
+                                                           Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- Memory -->
+                                <DataGridTemplateColumn Header="Memory" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="6,3" HorizontalAlignment="Stretch">
+                                                <Border x:Name="MemBadge" Background="#2E7D32" CornerRadius="3" Padding="6,2">
+                                                    <TextBlock Text="{Binding MemUsedDisplay}"
+                                                               Foreground="White"
+                                                               FontWeight="Bold"
+                                                               FontSize="11.5"
+                                                               HorizontalAlignment="Center"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding MemWatermarkText}"
+                                                           Foreground="#94A3B8"
+                                                           FontSize="10"
+                                                           HorizontalAlignment="Center"
+                                                           Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding MemAlarm}" Value="True">
+                                                    <Setter TargetName="MemBadge" Property="Background" Value="#DC2626"/>
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- Disk Space -->
+                                <DataGridTemplateColumn Header="Disk space" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="6,3" HorizontalAlignment="Stretch">
+                                                <Border x:Name="DiskBadge" Background="#2E7D32" CornerRadius="3" Padding="6,2">
+                                                    <TextBlock Text="{Binding DiskFreeDisplay}"
+                                                               Foreground="White"
+                                                               FontWeight="Bold"
+                                                               FontSize="11.5"
+                                                               HorizontalAlignment="Center"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding DiskWatermarkText}"
+                                                           Foreground="#94A3B8"
+                                                           FontSize="10"
+                                                           HorizontalAlignment="Center"
+                                                           Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding DiskFreeAlarm}" Value="True">
+                                                    <Setter TargetName="DiskBadge" Property="Background" Value="#DC2626"/>
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- Uptime -->
+                                <DataGridTemplateColumn Header="Uptime" Width="85">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding UptimeDisplay}"
+                                                       Foreground="#F8FAFC"
+                                                       FontFamily="Consolas"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Right"
+                                                       Margin="8,0"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- Cores -->
+                                <DataGridTemplateColumn Header="Cores" Width="65">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Cores}"
+                                                       Foreground="#F8FAFC"
+                                                       FontFamily="Consolas"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- Info (basic / rss) -->
+                                <DataGridTemplateColumn Header="Info" Width="105">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="4,0">
+                                                <Border Background="#0284C7" CornerRadius="3" Padding="6,2" Margin="0,0,4,0">
+                                                    <TextBlock Text="{Binding RatesMode}" Foreground="White" FontSize="10.5" FontWeight="SemiBold"/>
+                                                </Border>
+                                                <Border Background="#0284C7" CornerRadius="3" Padding="6,2">
+                                                    <TextBlock Text="{Binding MemStrategy}" Foreground="White" FontSize="10.5" FontWeight="SemiBold"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Expander>
+
                     <!-- Search Box & Quick Filter Checkboxes -->
-                    <Grid Grid.Row="1" Margin="0,0,0,12">
+                    <Grid Grid.Row="2" Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="320"/>
                             <ColumnDefinition Width="20"/>
@@ -482,7 +694,7 @@
                     </Grid>
 
                     <!-- Main Queue DataGrid -->
-                    <DataGrid Grid.Row="2"
+                    <DataGrid Grid.Row="3"
                               ItemsSource="{Binding FilteredQueuesView}"
                               AutoGenerateColumns="False"
                               IsReadOnly="True"

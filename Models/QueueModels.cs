@@ -1,6 +1,80 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace RabbitMqMonitor.Models;
+
+public class NodeItem
+{
+    public Guid ServerId { get; set; }
+    public string ServerName { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public bool IsRunning { get; set; } = true;
+
+    public long FdUsed { get; set; }
+    public long FdTotal { get; set; }
+    public string FdAvailableText => $"{FdTotal} available";
+
+    public long ProcUsed { get; set; }
+    public long ProcTotal { get; set; }
+    public string ProcAvailableText => $"{ProcTotal} available";
+
+    public long MemUsedBytes { get; set; }
+    public long MemLimitBytes { get; set; }
+    public bool MemAlarm { get; set; }
+    public string MemUsedDisplay => FormatBinaryBytes(MemUsedBytes);
+    public string MemWatermarkText => $"{FormatBinaryBytes(MemLimitBytes)} high watermark";
+
+    public long DiskFreeBytes { get; set; }
+    public long DiskFreeLimitBytes { get; set; }
+    public bool DiskFreeAlarm { get; set; }
+    public string DiskFreeDisplay => FormatBinaryBytes(DiskFreeBytes);
+    public string DiskWatermarkText => $"{FormatBinaryBytes(DiskFreeLimitBytes)} low watermark";
+
+    public long UptimeMilliseconds { get; set; }
+    public string UptimeDisplay => FormatUptime(UptimeMilliseconds);
+
+    public int Cores { get; set; }
+    public string RatesMode { get; set; } = "basic";
+    public string MemStrategy { get; set; } = "rss";
+
+    public static string FormatBinaryBytes(long bytes)
+    {
+        if (bytes <= 0) return "0 B";
+        const double kib = 1024.0;
+        const double mib = kib * 1024.0;
+        const double gib = mib * 1024.0;
+        const double tib = gib * 1024.0;
+
+        if (bytes >= tib)
+            return $"{bytes / tib:0.#} TiB";
+        if (bytes >= gib)
+        {
+            double val = bytes / gib;
+            return val >= 10 ? $"{val:0} GiB" : $"{val:0.#} GiB";
+        }
+        if (bytes >= mib)
+        {
+            double val = bytes / mib;
+            return val >= 10 ? $"{val:0} MiB" : $"{val:0.#} MiB";
+        }
+        if (bytes >= kib)
+            return $"{bytes / kib:0} KiB";
+        return $"{bytes} B";
+    }
+
+    public static string FormatUptime(long uptimeMs)
+    {
+        if (uptimeMs <= 0) return "-";
+        var ts = TimeSpan.FromMilliseconds(uptimeMs);
+        if (ts.TotalDays >= 1)
+            return $"{(int)ts.TotalDays}d {ts.Hours}h";
+        if (ts.TotalHours >= 1)
+            return $"{(int)ts.TotalHours}h {ts.Minutes}m";
+        if (ts.TotalMinutes >= 1)
+            return $"{(int)ts.TotalMinutes}m {ts.Seconds}s";
+        return $"{ts.Seconds}s";
+    }
+}
 
 public class QueueItem
 {
@@ -179,6 +253,57 @@ public class RabbitMessagePropertiesDto
     public long? Timestamp { get; set; }
 }
 
+public class RabbitNodeDto
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("running")]
+    public bool? Running { get; set; }
+
+    [JsonPropertyName("fd_used")]
+    public JsonElement? FdUsed { get; set; }
+
+    [JsonPropertyName("fd_total")]
+    public JsonElement? FdTotal { get; set; }
+
+    [JsonPropertyName("proc_used")]
+    public JsonElement? ProcUsed { get; set; }
+
+    [JsonPropertyName("proc_total")]
+    public JsonElement? ProcTotal { get; set; }
+
+    [JsonPropertyName("mem_used")]
+    public JsonElement? MemUsed { get; set; }
+
+    [JsonPropertyName("mem_limit")]
+    public JsonElement? MemLimit { get; set; }
+
+    [JsonPropertyName("mem_alarm")]
+    public bool? MemAlarm { get; set; }
+
+    [JsonPropertyName("disk_free")]
+    public JsonElement? DiskFree { get; set; }
+
+    [JsonPropertyName("disk_free_limit")]
+    public JsonElement? DiskFreeLimit { get; set; }
+
+    [JsonPropertyName("disk_free_alarm")]
+    public bool? DiskFreeAlarm { get; set; }
+
+    [JsonPropertyName("uptime")]
+    public JsonElement? Uptime { get; set; }
+
+    [JsonPropertyName("processors")]
+    public JsonElement? Processors { get; set; }
+
+    [JsonPropertyName("rates_mode")]
+    public string? RatesMode { get; set; }
+
+    [JsonPropertyName("mem_calculation_strategy")]
+    public string? MemCalculationStrategy { get; set; }
+}
+
 public class ServerPollResult
 {
     public Guid ServerId { get; set; }
@@ -190,6 +315,7 @@ public class ServerPollResult
     public double GlobalPublishRate { get; set; }
     public double GlobalDeliverRate { get; set; }
     public List<QueueItem> Queues { get; set; } = [];
+    public List<NodeItem> Nodes { get; set; } = [];
     public DateTime CheckedAt { get; set; } = DateTime.Now;
 }
 

@@ -17,6 +17,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly TrayNotificationService _trayService;
     private readonly DispatcherTimer _schedulerTimer;
     private readonly Dictionary<Guid, List<QueueItem>> _queuesByServer = new();
+    private readonly Dictionary<Guid, List<NodeItem>> _nodesByServer = new();
     private readonly SemaphoreSlim _pollLock = new(1, 1);
 
     private ServerProfile? _selectedServerFilter;
@@ -31,7 +32,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<ServerProfile> Servers { get; } = [];
     public ObservableCollection<QueueItem> AllQueues { get; } = [];
+    public ObservableCollection<NodeItem> AllNodes { get; } = [];
     public ICollectionView FilteredQueuesView { get; }
+    public ICollectionView FilteredNodesView { get; }
 
     public IReadOnlyList<int> AvailableRefreshIntervals { get; } = [3, 5, 10, 30];
 
@@ -45,6 +48,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(IsAllServersSelected));
                 OnPropertyChanged(nameof(ActiveFilterTitle));
                 FilteredQueuesView.Refresh();
+                FilteredNodesView.Refresh();
             }
         }
     }
@@ -128,7 +132,17 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public bool MinimizeToTray
     {
         get => _minimizeToTray;
-        set => SetProperty(ref _minimizeToTray, value);
+        set
+        {
+            if (SetProperty(ref _minimizeToTray, value))
+            {
+                _storageService.SaveRunInBackgroundSetting(value);
+                _trayService.SetTrayIconVisible(value);
+                GlobalStatusBanner = value
+                    ? "Background mode enabled (closing window keeps app in System Tray)"
+                    : "Background mode disabled (closing window exits application completely)";
+            }
+        }
     }
 
     public bool IsPolling
@@ -172,11 +186,19 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _apiService = apiService;
         _trayService = trayService;
 
+        _minimizeToTray = _storageService.LoadRunInBackgroundSetting();
+        _trayService.SetTrayIconVisible(_minimizeToTray);
+
         FilteredQueuesView = CollectionViewSource.GetDefaultView(AllQueues);
         FilteredQueuesView.Filter = FilterQueuePredicate;
         FilteredQueuesView.SortDescriptions.Add(new SortDescription(nameof(QueueItem.TotalMessages), ListSortDirection.Descending));
         FilteredQueuesView.SortDescriptions.Add(new SortDescription(nameof(QueueItem.ServerName), ListSortDirection.Ascending));
         FilteredQueuesView.SortDescriptions.Add(new SortDescription(nameof(QueueItem.Name), ListSortDirection.Ascending));
+
+        FilteredNodesView = CollectionViewSource.GetDefaultView(AllNodes);
+        FilteredNodesView.Filter = FilterNodePredicate;
+        FilteredNodesView.SortDescriptions.Add(new SortDescription(nameof(NodeItem.ServerName), ListSortDirection.Ascending));
+        FilteredNodesView.SortDescriptions.Add(new SortDescription(nameof(NodeItem.Name), ListSortDirection.Ascending));
 
         RefreshNowCommand = new AsyncRelayCommand(() => PollServersAsync(forceAll: true));
         ToggleAutoRefreshCommand = new RelayCommand(() => IsAutoRefreshEnabled = !IsAutoRefreshEnabled);
@@ -208,6 +230,17 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _schedulerTimer.Start();
 
         _ = PollServersAsync(forceAll: true);
+    }
+
+    private bool FilterNodePredicate(object obj)
+    {
+        if (obj is not NodeItem node)
+            return false;
+
+        if (SelectedServerFilter is not null && node.ServerId != SelectedServerFilter.Id)
+            return false;
+
+        return true;
     }
 
     private bool FilterQueuePredicate(object obj)
@@ -264,6 +297,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 disabled.StatusText = "DISABLED";
                 disabled.ErrorMessage = "Server polling is disabled";
                 _queuesByServer.Remove(disabled.Id);
+                _nodesByServer.Remove(disabled.Id);
             }
 
             if (dueServers.Count == 0)
@@ -305,6 +339,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                     server.LastChecked = res.CheckedAt;
 
                     _queuesByServer[server.Id] = res.Queues;
+                    _nodesByServer[server.Id] = res.Nodes;
 
                     foreach (var q in res.Queues.Where(q => q.IsOverThreshold))
                     {
@@ -323,6 +358,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                     server.GlobalPublishRate = 0;
                     server.GlobalDeliverRate = 0;
                     _queuesByServer.Remove(server.Id);
+                    _nodesByServer.Remove(server.Id);
 
                     if (wasOnline || forceAll)
                     {
@@ -344,6 +380,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private void RebuildQueueCollection()
     {
         AllQueues.Clear();
+        AllNodes.Clear();
         foreach (var server in Servers.Where(s => s.IsEnabled))
         {
             if (_queuesByServer.TryGetValue(server.Id, out var queues))
@@ -355,9 +392,19 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                     AllQueues.Add(q);
                 }
             }
+
+            if (_nodesByServer.TryGetValue(server.Id, out var nodes))
+            {
+                foreach (var n in nodes)
+                {
+                    n.ServerName = server.Name;
+                    AllNodes.Add(n);
+                }
+            }
         }
 
         FilteredQueuesView.Refresh();
+        FilteredNodesView.Refresh();
         OnPropertyChanged(nameof(OnlineServersCount));
         OnPropertyChanged(nameof(EnabledServersCount));
         OnPropertyChanged(nameof(TotalQueuesCount));
@@ -437,6 +484,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             SelectedServerFilter = null;
 
         _queuesByServer.Remove(target.Id);
+        _nodesByServer.Remove(target.Id);
         Servers.Remove(target);
         _storageService.SaveServers(Servers);
         RebuildQueueCollection();

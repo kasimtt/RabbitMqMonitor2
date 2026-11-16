@@ -1,21 +1,21 @@
 # RabbitMQ Unified Multi-Server Monitor
 
-Birden fazla **RabbitMQ Management HTTP API** sunucusunu tek bir karanlık temalı (Dark UI) masaüstü ekranından canlı olarak izlemenizi, kuyrukları filtrelemenizi ve yönetim işlemlerini (Peek, Purge, Web UI) gerçekleştirmenizi sağlayan taşınabilir (.NET 8 WPF) masaüstü uygulaması.
+Birden fazla **RabbitMQ Management HTTP API** sunucusunu tek bir karanlık temalı (Dark UI) masaüstü ekranından canlı olarak izlemenizi, kuyrukları filtrelemenizi ve mesajları kuyruktan silmeden/tüketmeden güvenli şekilde (Non-Destructive Peek) incelemenizi sağlayan taşınabilir (.NET 8 WPF) masaüstü uygulaması.
 
 ---
 
 ## Öne Çıkan Özellikler
 
-- **Çoklu Sunucu İzleme (Multi-Server Monitoring):**
+- **Çoklu Sunucu ve Node (Donanım/Kaynak) İzleme:**
   - İstediğiniz kadar RabbitMQ ortamını (Local, Dev, Test, Stage, Prod) ekleyip aynı anda izleyebilirsiniz.
   - Her sunucu kartında **Online/Offline durumu**, **RabbitMQ & Erlang versiyonu**, **toplam kuyruk**, **toplam mesaj**, **aktif consumer sayısı** ve **anlık Publish/Deliver hızı (msg/s)** gösterilir.
+  - **Nodes Tablosu (`/api/nodes`):** Ekranın üst kısmındaki **Nodes** panelinde her sunucunun düğüm adı (`rabbit@...`), **File descriptors** (kullanılan / toplam), **Erlang processes**, **Memory** (kullanılan / high watermark sınırı), **Disk space** (boş alan / low watermark sınırı), **Uptime** (`25d 2h`), **Cores** (CPU çekirdek sayısı) ve **Info** (`basic` / `rss`) bilgileri RabbitMQ Web UI görünümüyle birebir aynı yeşil/kırmızı durum çubuklarıyla canlı gösterilir. (İstatistik sıfırlama / Reset stats gibi yazma butonları içermez, %100 salt-okunurdur).
 - **Birleşik Kuyruk Tablosu (Unified Queue Stream):**
   - Tüm sunuculardaki kuyrukları tek tabloda birleştirir veya sol panelden seçtiğiniz sunucuya göre filtreler.
   - **Anlık Arama & Hızlı Filtreler:** Kuyruk adı, sunucu adı veya vhost'a göre anlık arama; *"Only Non-Empty (>0 msgs)"* ve *"No Consumers (0 consumers)"* filtreleri.
-- **Güvenli Kuyruk İşlemleri:**
-  - **Peek (Mesajları İncele):** Kuyruktaki ilk 10 mesajı tüketmeden (`ack_requeue_true` / non-destructive) görüntüler; JSON payload'ları otomatik biçimlendirir (pretty-print) ve panoya kopyalamanızı sağlar.
-  - **Purge (Kuyruğu Temizle):** Çift onay penceresiyle seçili kuyruktaki bekleyen mesajları güvenli şekilde temizler.
-  - **Web UI Kısayolu:** Tek tıkla ilgili sunucunun veya kuyruğun RabbitMQ Management Web sayfasını varsayılan tarayıcıda açar.
+- **%100 Güvenli ve Salt-Okunur (Read-Only / Non-Destructive) Mimari:**
+  - Uygulama içerisinde hiçbir şekilde RabbitMQ servisini durdurma, kuyruk silme (Delete), kuyruk boşaltma (Purge) veya consumer kapatma özelliği **bulunmaz**.
+  - **Peek (Mesajları İncele):** Kuyruktaki ilk 5 mesajı tüketmeden (`ack_requeue_true` / non-destructive) görüntüler; mesajlar kuyruktan **silinmez** ve sırası bozulmaz. JSON payload'ları otomatik biçimlendirir (pretty-print) ve panoya kopyalamanızı sağlar.
 - **Masaüstü Bildirimleri & Sistem Tepsisi (System Tray):**
   - Pencereyi kapattığınızda veya küçülttüğünüzde arka planda sistem tepsisinde (System Tray) çalışmaya devam eder.
   - Bir sunucu **Offline** olduğunda veya kuyruk mesaj sayısı belirlediğiniz **eşik değerini (Queue Alert Threshold)** aştığında Windows bildirim balonu gösterir (3 dakikalık bildirim soğuma süresi ile).
@@ -69,7 +69,7 @@ RabbitMqMonitor/
 │   └── ServerProfile.cs                 # Sunucu profili ve canlı telemetri modeli
 ├── Services/
 │   ├── CredentialEncryptionService.cs   # Windows DPAPI şifreleme/çözme servisi
-│   ├── RabbitMqApiService.cs            # RabbitMQ HTTP API istemcisi (Overview, Queues, Purge, Peek)
+│   ├── RabbitMqApiService.cs            # RabbitMQ HTTP API istemcisi (Sadece Overview, Queues ve güvenli Peek)
 │   ├── ServerConfigStorageService.cs    # servers.json okuma/yazma servisi
 │   └── TrayNotificationService.cs       # Sistem tepsisi (System Tray) ve masaüstü bildirimleri
 ├── ViewModels/
