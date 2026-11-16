@@ -1,0 +1,16 @@
+# Visual Studio / Editor temporary files
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build & Publish outputs
+[Bb]in/
+[Oo]bj/
+[Pp]ublish/
+out/
+
+# Runtime local server config (contains encrypted credentials)
+servers.json

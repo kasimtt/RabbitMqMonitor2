@@ -1,0 +1,93 @@
+# RabbitMQ Unified Multi-Server Monitor
+
+Birden fazla **RabbitMQ Management HTTP API** sunucusunu tek bir karanlık temalı (Dark UI) masaüstü ekranından canlı olarak izlemenizi, kuyrukları filtrelemenizi ve yönetim işlemlerini (Peek, Purge, Web UI) gerçekleştirmenizi sağlayan taşınabilir (.NET 8 WPF) masaüstü uygulaması.
+
+---
+
+## Öne Çıkan Özellikler
+
+- **Çoklu Sunucu İzleme (Multi-Server Monitoring):**
+  - İstediğiniz kadar RabbitMQ ortamını (Local, Dev, Test, Stage, Prod) ekleyip aynı anda izleyebilirsiniz.
+  - Her sunucu kartında **Online/Offline durumu**, **RabbitMQ & Erlang versiyonu**, **toplam kuyruk**, **toplam mesaj**, **aktif consumer sayısı** ve **anlık Publish/Deliver hızı (msg/s)** gösterilir.
+- **Birleşik Kuyruk Tablosu (Unified Queue Stream):**
+  - Tüm sunuculardaki kuyrukları tek tabloda birleştirir veya sol panelden seçtiğiniz sunucuya göre filtreler.
+  - **Anlık Arama & Hızlı Filtreler:** Kuyruk adı, sunucu adı veya vhost'a göre anlık arama; *"Only Non-Empty (>0 msgs)"* ve *"No Consumers (0 consumers)"* filtreleri.
+- **Güvenli Kuyruk İşlemleri:**
+  - **Peek (Mesajları İncele):** Kuyruktaki ilk 10 mesajı tüketmeden (`ack_requeue_true` / non-destructive) görüntüler; JSON payload'ları otomatik biçimlendirir (pretty-print) ve panoya kopyalamanızı sağlar.
+  - **Purge (Kuyruğu Temizle):** Çift onay penceresiyle seçili kuyruktaki bekleyen mesajları güvenli şekilde temizler.
+  - **Web UI Kısayolu:** Tek tıkla ilgili sunucunun veya kuyruğun RabbitMQ Management Web sayfasını varsayılan tarayıcıda açar.
+- **Masaüstü Bildirimleri & Sistem Tepsisi (System Tray):**
+  - Pencereyi kapattığınızda veya küçülttüğünüzde arka planda sistem tepsisinde (System Tray) çalışmaya devam eder.
+  - Bir sunucu **Offline** olduğunda veya kuyruk mesaj sayısı belirlediğiniz **eşik değerini (Queue Alert Threshold)** aştığında Windows bildirim balonu gösterir (3 dakikalık bildirim soğuma süresi ile).
+- **Güvenli Şifre Saklama (Windows DPAPI):**
+  - Sunucu profilleri uygulama dizinindeki `servers.json` dosyasında saklanır.
+  - Şifreler düz metin (plain-text) olarak **yazılmaz**; Windows **DPAPI (`ProtectedData` - CurrentUser)** ile şifrelenerek kaydedilir.
+
+---
+
+## Gereksinimler
+
+- **Hedef İşletim Sistemi:** Windows 10 / Windows 11 (x64)
+- **RabbitMQ Tarafı:** İzlenecek RabbitMQ sunucularında `rabbitmq_management` eklentisinin aktif olması gerekir (varsayılan port: `15672`).
+  ```bash
+  rabbitmq-plugins enable rabbitmq_management
+  ```
+- **Geliştirme / Derleme İçin:** .NET 8.0 SDK (Tek dosyalık `publish/RabbitMqMonitor.exe` çıktısını çalıştırmak için hedef bilgisayarda .NET kurulu olmasına **gerek yoktur**).
+
+---
+
+## Kurulum ve Çalıştırma
+
+### 1. Hazır `.exe` ile Çalıştırma (Kurulumsuz / Portable)
+Proje içerisinde derlenmiş tek dosyalık çalıştırılabilir dosya doğrudan kullanılabilir:
+```text
+publish\RabbitMqMonitor.exe
+```
+Bu dosyayı istediğiniz klasöre veya başka bir Windows bilgisayara kopyalayıp doğrudan çift tıklayarak çalıştırabilirsiniz.
+
+### 2. Kaynak Koddan Çalıştırma
+```powershell
+dotnet run --project RabbitMqMonitor.csproj
+```
+
+### 3. Tek Dosyalık (Single-File) `.exe` Üretme
+Değişiklik yaptıktan sonra yeni bir taşınabilir `.exe` almak için:
+```powershell
+dotnet publish RabbitMqMonitor.csproj -c Release -o ./publish
+```
+
+---
+
+## Proje Yapısı
+
+```text
+RabbitMqMonitor/
+├── Assets/
+│   └── rabbitmq.ico                     # Çok çözünürlüklü uygulama ve pencere ikonu
+├── Models/
+│   ├── QueueModels.cs                   # Kuyruk, mesaj (Peek) ve API DTO modelleri
+│   └── ServerProfile.cs                 # Sunucu profili ve canlı telemetri modeli
+├── Services/
+│   ├── CredentialEncryptionService.cs   # Windows DPAPI şifreleme/çözme servisi
+│   ├── RabbitMqApiService.cs            # RabbitMQ HTTP API istemcisi (Overview, Queues, Purge, Peek)
+│   ├── ServerConfigStorageService.cs    # servers.json okuma/yazma servisi
+│   └── TrayNotificationService.cs       # Sistem tepsisi (System Tray) ve masaüstü bildirimleri
+├── ViewModels/
+│   ├── MainViewModel.cs                 # Ana ekran durumu, zamanlayıcı ve filtreleme mantığı
+│   └── MvvmPrimitives.cs                # ObservableObject ve RelayCommand altyapısı
+├── Views/
+│   ├── PeekMessagesWindow.xaml(.cs)     # Kuyruk mesajlarını (JSON/Payload) inceleme penceresi
+│   └── ServerEditorWindow.xaml(.cs)     # Sunucu ekleme/düzenleme ve bağlantı testi penceresi
+├── MainWindow.xaml(.cs)                 # Ana kontrol paneli arayüzü
+├── RabbitMqMonitor.csproj               # Proje ve tek-dosya publish yapılandırması
+└── RabbitMqMonitor.sln                  # Visual Studio Solution dosyası
+```
+
+---
+
+## Kullanım İpuçları
+
+1. **Yeni Sunucu Ekleme:** Sol paneldeki **+ Add** butonuna tıklayın, sunucu bilgilerini (`http://localhost:15672`, kullanıcı adı, şifre, vhost) girin ve kaydetmeden önce **Test Connection** butonu ile bağlantıyı doğrulayın.
+2. **Belirli Bir Sunucuya Odaklanma:** Sol listedeki bir sunucu kartına tıkladığınızda sağdaki tablo sadece o sunucunun kuyruklarını gösterir. Tekrar tüm sunucuları görmek için üstteki **Show All** butonuna tıklayın.
+3. **Kuyruk Eşik Uyarısı (Alert Threshold):** Her sunucu profilinde belirlediğiniz mesaj eşiği (ör. `1000`) aşıldığında ilgili kuyruk satırı tabloda **Turuncu (Warning)** renkle vurgulanır ve masaüstü bildirimi gönderilir. Consumer sayısı `0` olan ve içinde mesaj bekleyen kuyruklar ise **Kırmızı (Stalled)** rozetiyle işaretlenir.
+
